@@ -11,8 +11,8 @@ export type GameFireActionConfig = {
     updateMode: "replace" | "append";
 };
 
-export const FIRE_MAX_STRENGTH = 40;
-export const FIRE_MAX_DURATION = 30000;
+export const FIRE_MAX_STRENGTH = 200;
+export const FIRE_MAX_DURATION = 300000;
 
 export class GameFireAction extends AbstractGameAction<GameFireActionConfig> {
     /** 一键开火强度 */
@@ -34,7 +34,7 @@ export class GameFireAction extends AbstractGameAction<GameFireActionConfig> {
 
     async execute(ab: AbortController, harvest: () => void, done: () => void): Promise<void> {
         let strength = Math.min(this.game.strengthConfig.strength + this.fireStrength, this.game.gameStrength.limit);
-        let outputTime = Math.min(this.fireEndTimestamp - Date.now(), 30000); // 单次最多输出30秒
+        let outputTime = Math.min(this.fireEndTimestamp - Date.now(), FIRE_MAX_DURATION); // 单次最多输出30秒
 
         await this.game.setClientStrength(strength);
 
@@ -62,6 +62,7 @@ export class GameFireAction extends AbstractGameAction<GameFireActionConfig> {
 
         if (config.strength) {
             this.fireStrength = Math.min(config.strength, FIRE_MAX_STRENGTH);
+            this.fireEndTimestamp = Date.now() + Math.min(config.time, FIRE_MAX_DURATION);
             const strength = Math.min(this.game.strengthConfig.strength + this.fireStrength, this.game.clientStrength.limit);
             this.game.setClientStrength(strength).catch((error) => {
                 console.error('Failed to set strength:', error);

@@ -247,15 +247,25 @@ export class DGLabWSClient {
     public async outputPulse(pulseId: string, time: number, options: OutputPulseOptions = {}) {
         // 输出脉冲，直到下次随机强度时间
         let totalDuration = 0;
-        const pulseService = DGLabPulseService.instance;
-        const currentPulseInfo = pulseService.getPulse(pulseId, options.customPulseList) ?? pulseService.getDefaultPulse();
-
-        let startTime = Date.now();
 
         let harvest = () => {};
         if (options.abortController) {
             harvest = createHarvest(options.abortController);
         }
+        //如果持续时间很长，将波形分段发送 防止爆掉郊狼缓冲区？
+        while (totalDuration < time || time === 0) {
+            harvest()
+            totalDuration += await this.outputPulseFragment(pulseId, time, totalDuration, harvest, options);
+        }
+    }
+
+    private async outputPulseFragment(pulseId: string, time: number, passedTime: number, harvest: Function, options: OutputPulseOptions = {}) : Promise<number> {
+        let startTime = Date.now();
+        let fragmentTime = 0;
+        const leftTime = time - passedTime;
+
+        const pulseService = DGLabPulseService.instance;
+        const currentPulseInfo = pulseService.getPulse(pulseId, options.customPulseList) ?? pulseService.getDefaultPulse();
 
         for (let i = 0; i < 50; i++) {
             let [pulseData, pulseDuration] = pulseService.getPulseHexData(currentPulseInfo);
@@ -267,28 +277,30 @@ export class DGLabWSClient {
 
             harvest();
 
-            totalDuration += pulseDuration;
-            if (totalDuration > time) {
+            fragmentTime += pulseDuration;
+            if (fragmentTime > leftTime) {
                 break;
             }
         }
 
         let netDuration = Date.now() - startTime;
-
-        await asleep(time, options.abortController); // 等待时间到达
-
-        harvest();
-        
-        startTime = Date.now();
-        options.onTimeEnd?.(); // 时间到达后的回调
-        let onTimeEndDuration = Date.now() - startTime;
-
-        let finished = true;
         harvest();
 
-        if (totalDuration > time) {
-            const waitTime = totalDuration - time - onTimeEndDuration - netDuration;
-            finished = await asleep(waitTime, options.abortController);
+        await asleep(Math.min(fragmentTime, leftTime), options.abortController);
+
+        //存在下一个时间片段
+        if (leftTime > fragmentTime) {
+            return fragmentTime;
+        } else {
+            startTime = Date.now();
+            harvest()
+            options.onTimeEnd?.(); // 时间到达后的回调
+
+            let onTimeEndDuration = Date.now() - startTime;
+            harvest()
+            const waitTime = fragmentTime - leftTime - netDuration - onTimeEndDuration;
+            await asleep(waitTime, options.abortController);
+            return leftTime;
         }
     }
 
