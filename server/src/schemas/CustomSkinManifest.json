@@ -36,32 +36,43 @@
                 "type": {
                     "type": "string",
                     "enum": [
-                        "string",
-                        "int",
                         "boolean",
+                        "int",
+                        "float",
+                        "string",
                         "select"
                     ]
                 },
+                "name": {
+                    "type": "string"
+                },
+                "help": {
+                    "type": "string"
+                },
                 "options": {
-                    "type": "object",
-                    "properties": {
-                        "label": {
-                            "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            }
                         },
-                        "value": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "label",
-                        "value"
-                    ],
-                    "additionalProperties": false
+                        "required": [
+                            "value",
+                            "label"
+                        ],
+                        "additionalProperties": false
+                    }
                 }
             },
             "required": [
                 "prop",
-                "type"
+                "type",
+                "name"
             ],
             "additionalProperties": false
         }

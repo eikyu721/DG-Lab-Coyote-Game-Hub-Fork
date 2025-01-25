@@ -25,7 +25,7 @@ export class ObjectUpdater {
         let prevSchema = this.objectSchemas[this.objectSchemas.length - 1];
         this.objectSchemas.push({ version, defaultEmptyObject, upgrade });
 
-        if (prevSchema.version > version) { // 如果添加的版本号比前一个版本号小，则重新排序
+        if (typeof prevSchema != 'undefined' && prevSchema.version > version) { // 如果添加的版本号比前一个版本号小，则重新排序
             this.objectSchemas.sort((a, b) => a.version - b.version);
         }
     }
